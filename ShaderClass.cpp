@@ -19,8 +19,7 @@ std::string getFileContent(const char* filename) {
 	throw(errno);
 };
 
-
-Shader::Shader(const char* vertex_file, const char* fragment_file) {
+void Shader::createShader(const char* vertex_file, const char* fragment_file) {
 	std::string vertex_code = getFileContent(vertex_file);
 	std::string fragment_code = getFileContent(fragment_file);
 
@@ -56,7 +55,6 @@ Shader::Shader(const char* vertex_file, const char* fragment_file) {
 		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
 	}
 
-	//Shader Program
 	ID = glCreateProgram();
 
 	//Attaches previous shader to shader program
