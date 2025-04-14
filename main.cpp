@@ -33,8 +33,10 @@ GLfloat offsets[] = {
 };
 
 GLfloat sizes[]{
-	100.0f, 100.0f
+	200.0f, 200.0f
 };
+
+
 
 void setOrthographicProjection(Shader shader_program,
 	float left, float right,
@@ -60,7 +62,24 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 	setOrthographicProjection(SHADER, 0, width, 0, height, 0.0f, 1.0f);
 };
 
-void processInput(GLFWwindow* window);
+void processInput(GLFWwindow* window, GLfloat *offset, float delta_time) {
+	float move_speed = 50.0f;
+
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) { 
+		offset[1] += move_speed * delta_time;
+	};
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+		offset[1] -= move_speed * delta_time;
+	};
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		offset[0] += move_speed * delta_time;
+	};
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+		offset[0] -= move_speed * delta_time;
+	};
+};
 
 int main() {
 	//INITIALIZE OPENGL VERSION 4.6 
@@ -113,30 +132,31 @@ int main() {
 	vao.Unbind();
 	ebo.Unbind();
 
+	float delta_time = 0.0f, last_frame = 0.0f;
+
 	//Main program loop
 	while (!glfwWindowShouldClose(window)) {
-		//INPUT
-		processInput(window);
+		float current_frame = glfwGetTime();
+		delta_time = current_frame - last_frame;
+		last_frame = current_frame;
 
-		//RENDERING
+		processInput(window, offsets, delta_time);
+
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//Sets the shader program to the previous one made
+		offset_vbo.Bind();
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(offsets), offsets);
+
 		SHADER.Activate();
 
 		vao.Bind();
-
-		//Draws the triangle
-		glBindVertexArray(vao.ID);
 		glDrawElementsInstanced(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0, 1);
 
-		//Check and call events & swap buffers
-		glfwPollEvents();
 		glfwSwapBuffers(window);
+		glfwPollEvents();
 	}
 
-	//Properly deletes stuff in memory and exits program
 	vao.Delete();
 	ebo.Delete();
 
@@ -150,8 +170,4 @@ int main() {
 	glfwTerminate();
 
 	return 0;
-}
-
-void processInput(GLFWwindow* window) {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
 }
