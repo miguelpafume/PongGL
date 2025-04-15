@@ -1,5 +1,5 @@
 # Pong
-Made using OpenGL and a vew libraries
+Made using OpenGL and a few libraries
 
 ## Requires
 - OpenGL
