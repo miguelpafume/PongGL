@@ -1,7 +1,7 @@
-#Pong
+# Pong
 Made using OpenGL and a vew libraries
 
-##Requires
+## Requires
 - OpenGL
 - stb
 - glm
