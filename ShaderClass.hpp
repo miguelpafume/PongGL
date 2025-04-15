@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cerrno>
 
+// Return file's content as a string
 std::string getFileContent(const char* filename);
 
 class Shader {

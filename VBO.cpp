@@ -5,7 +5,6 @@ VBO::VBO(GLfloat* verticies, GLsizeiptr size, GLenum draw) {
 
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 	glBufferData(GL_ARRAY_BUFFER, size, verticies, draw);
-	
 }
 
 void VBO::Bind() {

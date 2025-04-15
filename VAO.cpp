@@ -4,6 +4,7 @@ VAO::VAO() {
 	glGenVertexArrays(1, &ID);
 }
 
+// Link passed VBO to the current VAO object
 void VAO::LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset, GLuint divisor) {
 	VBO.Bind();
 	glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
