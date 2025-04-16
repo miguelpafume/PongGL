@@ -15,7 +15,8 @@ GLuint SCREEN_WIDTH = 800;
 GLuint SCREEN_HEIGHT = 600;
 Shader SHADER;
 
-float PI = 4 * atanf(1.0f);
+const float paddle_speed = 150.0f;
+const float PI = 4 * atanf(1.0f);
 
 // Creates a circle using a 2D array for indices and precision (num_triangles AKA slices)
 void gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int num_triangles, float radius = 1.0f) {
@@ -76,24 +77,24 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 	setOrthographicProjection(SHADER, 0, width, 0, height, 0.0f, 1.0f);
 };
 
-void processInput(GLFWwindow* window, GLfloat *offset, float delta_time) {
-	float move_speed = 50.0f; // ### RENAME TO PADDLE SPEED (MAYBE BALL SPEED TOO)
-
+void processInput(GLFWwindow* window, GLfloat* paddle_offsets, float delta_time) {
 	// Closes the windows when escape is pressed
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
 
-	// ### TEMP
+	// Right paddle
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) { 
-		offset[1] += move_speed * delta_time;
+		paddle_offsets[1] += paddle_speed * delta_time;
 	};
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		offset[1] -= move_speed * delta_time;
+		paddle_offsets[1] -= paddle_speed * delta_time;
 	};
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-		offset[0] += move_speed * delta_time;
+
+	// Left paddle
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		paddle_offsets[3] += paddle_speed * delta_time;
 	};
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-		offset[0] -= move_speed * delta_time;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		paddle_offsets[3] -= paddle_speed * delta_time;
 	};
 };
 
@@ -106,7 +107,7 @@ int main() {
 
 	// Create window instance and makes it a 800x600 pixel res
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "PongGL", NULL, NULL);
-
+	
 	glfwMakeContextCurrent(window);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
@@ -128,6 +129,55 @@ int main() {
 	SHADER.createShader("default.vert", "default.frag");
 	setOrthographicProjection(SHADER, 0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, 0.0f, 1.0f);
 
+	// ***************
+	// **	PADDLE	**
+	// ***************
+	
+	GLfloat paddle_vertices[] = {
+		 0.5f,  0.5f,
+		-0.5f,  0.5f,
+		-0.5f, -0.5f,
+		 0.5f, -0.5f
+	};
+
+	GLuint paddle_indices[] = {
+		0, 1, 2,
+		2, 3 ,0
+	};
+
+	GLfloat paddle_offsets[] = {
+		35.0f, SCREEN_HEIGHT / 2.0f,
+		SCREEN_WIDTH - 35.0f, SCREEN_HEIGHT / 2.0f
+	};
+
+	GLfloat paddle_sizes[] = {
+		15.0f, 50.0f,
+	};
+
+	VAO paddle_vao;
+	paddle_vao.Bind();
+
+	VBO paddle_position_vbo(paddle_vertices, 2 * 4 * sizeof(GLfloat), GL_STATIC_DRAW);
+	VBO paddle_offset_vbo(paddle_offsets, 2 * 2 * sizeof(GLfloat), GL_DYNAMIC_DRAW);
+	VBO paddle_size_vbo(paddle_sizes, 2 * 1 * sizeof(GLfloat), GL_STATIC_DRAW);
+
+	EBO paddle_ebo(paddle_indices, 2 * 4 * sizeof(GLfloat));
+	paddle_ebo.Bind();
+
+	paddle_vao.linkAttrib(paddle_position_vbo, 0, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 0);
+	paddle_vao.linkAttrib(paddle_offset_vbo, 1, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 1);
+	paddle_vao.linkAttrib(paddle_size_vbo, 2, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 2);
+
+	paddle_vao.Unbind();
+	paddle_position_vbo.Unbind();
+	paddle_offset_vbo.Unbind();
+	paddle_size_vbo.Unbind();
+	paddle_ebo.Unbind();
+
+	// ***************
+	// **	BALL	**
+	// ***************
+
 	// Ball variables
 	GLfloat* ball_vertices;
 	GLuint* ball_indices;
@@ -141,13 +191,13 @@ int main() {
 		SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f
 	};
 
-	GLfloat ball_sizes[]{
+	GLfloat ball_sizes[] = {
 		10.0f, 10.0f
 	};
 
 	// Generates ball Vertex Array Object and binds it
-	VAO ball_VAO;
-	ball_VAO.Bind();
+	VAO ball_vao;
+	ball_vao.Bind();
 
 	// Generates ball Vertex Buffer Objects and binds them
 	VBO ball_position_vbo(ball_vertices, 2 * (num_triangles + 1) * sizeof(GLfloat), GL_STATIC_DRAW);
@@ -155,20 +205,20 @@ int main() {
 	VBO ball_size_vbo(ball_sizes, sizeof(ball_sizes), GL_DYNAMIC_DRAW);
 
 	// Generates Element Buffer Object and binds it
-	EBO ebo(ball_indices, 3 * num_triangles * sizeof(GLfloat));
-	ebo.Bind();
+	EBO ball_ebo(ball_indices, 3 * num_triangles * sizeof(GLfloat));
+	ball_ebo.Bind();
 
 	// Links all of ball's VBOs to it's VAO
-	ball_VAO.LinkAttrib(ball_position_vbo, 0, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 0);
-	ball_VAO.LinkAttrib(ball_offset_vbo, 1, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 1);
-	ball_VAO.LinkAttrib(ball_size_vbo, 2, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 2);
+	ball_vao.linkAttrib(ball_position_vbo, 0, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 0);
+	ball_vao.linkAttrib(ball_offset_vbo, 1, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 1);
+	ball_vao.linkAttrib(ball_size_vbo, 2, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 2);
 
 	// Unbind all previous objects
-	ball_VAO.Unbind();
+	ball_vao.Unbind();
 	ball_position_vbo.Unbind();
 	ball_offset_vbo.Unbind();
 	ball_size_vbo.Unbind();
-	ebo.Unbind();
+	ball_ebo.Unbind();
 
 	// Time elapse, used to stabilyze movement across different framerates
 	float delta_time = 0.0f, last_frame = 0.0f;
@@ -180,7 +230,7 @@ int main() {
 		delta_time = current_frame - last_frame;
 		last_frame = current_frame;
 
-		processInput(window, ball_offsets, delta_time);
+		processInput(window, paddle_offsets, delta_time);
 
 		// Clear screen and set background to black
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -189,13 +239,21 @@ int main() {
 		// Activates render/shader object
 		SHADER.Activate();
 
-		// Draw the ball on screen
+		// Updates ball
 		ball_offset_vbo.Bind();
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ball_offsets), ball_offsets);
+		
+		paddle_offset_vbo.Bind();
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(paddle_offsets), paddle_offsets);
 
-		// Updates ball
-		ball_VAO.Bind();
+
+		// Draw the ball on screen
+		ball_vao.Bind();
 		glDrawElementsInstanced(GL_TRIANGLES, 3 * num_triangles, GL_UNSIGNED_INT, 0, 1);
+
+		// Draw paddles on screen
+		paddle_vao.Bind();
+		glDrawElementsInstanced(GL_TRIANGLES, 3 * 2, GL_UNSIGNED_INT, 0, 2);
 
 		// Swap frames
 		glfwSwapBuffers(window);
@@ -203,12 +261,19 @@ int main() {
 	}
 
 	// Clears up everything
-	ball_VAO.Delete();
-	ebo.Delete();
+	ball_vao.Delete();
+	ball_ebo.Delete();
 
 	ball_position_vbo.Delete();
 	ball_offset_vbo.Delete();
 	ball_size_vbo.Delete();
+
+	paddle_vao.Delete();
+	paddle_ebo.Delete();
+	
+	paddle_position_vbo.Delete();
+	paddle_offset_vbo.Delete();
+	paddle_size_vbo.Delete();
 
 	SHADER.Delete();
 

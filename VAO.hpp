@@ -9,7 +9,7 @@ class VAO {
 		VAO();
 
 		// Link passed VBO to the current VAO object
-		void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset, GLuint divisor);
+		void linkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset, GLuint divisor);
 
 		void Bind();
 		void Unbind();
