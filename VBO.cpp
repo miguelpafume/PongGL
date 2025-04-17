@@ -1,5 +1,12 @@
 #include "VBO.hpp"
 
+VBO::VBO(vec2* verticies, GLsizeiptr size, GLenum draw) {
+	glGenBuffers(1, &ID);
+
+	glBindBuffer(GL_ARRAY_BUFFER, ID);
+	glBufferData(GL_ARRAY_BUFFER, size, verticies, draw);
+}
+
 VBO::VBO(GLfloat* verticies, GLsizeiptr size, GLenum draw) {
 	glGenBuffers(1, &ID);
 

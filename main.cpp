@@ -10,13 +10,18 @@
 #include "VBO.hpp"
 #include "VAO.hpp"
 #include "EBO.hpp"
+#include "definitions.hpp"
 
 GLuint SCREEN_WIDTH = 800;
 GLuint SCREEN_HEIGHT = 600;
 Shader SHADER;
 
-const float paddle_speed = 150.0f;
 const float PI = 4 * atanf(1.0f);
+
+const float paddle_height = 50.0f;
+const float paddle_speed = 150.0f;
+const float ball_diameter = 14.0f;
+const float paddle_boundary = (paddle_height / 2.0f) + (ball_diameter / 2.0f);
 
 // Creates a circle using a 2D array for indices and precision (num_triangles AKA slices)
 void gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int num_triangles, float radius = 1.0f) {
@@ -49,7 +54,7 @@ void gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int num
 }
 
 void setOrthographicProjection(Shader shader_program,
-	float left, float right,
+	int left, float right,
 	float bottom, float top,
 	float near, float far) {
 
@@ -77,24 +82,33 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 	setOrthographicProjection(SHADER, 0, width, 0, height, 0.0f, 1.0f);
 };
 
-void processInput(GLFWwindow* window, GLfloat* paddle_offsets, float delta_time) {
+void processInput(GLFWwindow* window, vec2* paddle_offsets, float delta_time) {
 	// Closes the windows when escape is pressed
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
 
 	// Right paddle
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) { 
-		paddle_offsets[1] += paddle_speed * delta_time;
+		if (paddle_offsets[1].y < SCREEN_HEIGHT - paddle_boundary) {
+			paddle_offsets[1].y += paddle_speed * delta_time;
+		}
 	};
+
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		paddle_offsets[1] -= paddle_speed * delta_time;
+		if (paddle_offsets[1].y > paddle_boundary) {
+			paddle_offsets[1].y -= paddle_speed * delta_time;
+		}
 	};
 
 	// Left paddle
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		paddle_offsets[3] += paddle_speed * delta_time;
+		if (paddle_offsets[0].y < SCREEN_HEIGHT - paddle_boundary) {
+			paddle_offsets[0].y += paddle_speed * delta_time;
+		}
 	};
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		paddle_offsets[3] -= paddle_speed * delta_time;
+		if (paddle_offsets[0].y > paddle_boundary) {
+			paddle_offsets[0].y -= paddle_speed * delta_time;
+		}
 	};
 };
 
@@ -145,23 +159,23 @@ int main() {
 		2, 3 ,0
 	};
 
-	GLfloat paddle_offsets[] = {
+	vec2 paddle_offsets[] = {
 		35.0f, SCREEN_HEIGHT / 2.0f,
 		SCREEN_WIDTH - 35.0f, SCREEN_HEIGHT / 2.0f
 	};
 
-	GLfloat paddle_sizes[] = {
-		15.0f, 50.0f,
+	vec2 paddle_sizes[] = {
+		10.0f, paddle_height,
 	};
 
 	VAO paddle_vao;
 	paddle_vao.Bind();
 
-	VBO paddle_position_vbo(paddle_vertices, 2 * 4 * sizeof(GLfloat), GL_STATIC_DRAW);
-	VBO paddle_offset_vbo(paddle_offsets, 2 * 2 * sizeof(GLfloat), GL_DYNAMIC_DRAW);
-	VBO paddle_size_vbo(paddle_sizes, 2 * 1 * sizeof(GLfloat), GL_STATIC_DRAW);
+	VBO paddle_position_vbo(paddle_vertices, sizeof(paddle_vertices), GL_STATIC_DRAW);
+	VBO paddle_offset_vbo(paddle_offsets, sizeof(paddle_offsets), GL_DYNAMIC_DRAW);
+	VBO paddle_size_vbo(paddle_sizes, sizeof(paddle_sizes), GL_STATIC_DRAW);
 
-	EBO paddle_ebo(paddle_indices, 2 * 4 * sizeof(GLfloat));
+	EBO paddle_ebo(paddle_indices, sizeof(paddle_indices));
 	paddle_ebo.Bind();
 
 	paddle_vao.linkAttrib(paddle_position_vbo, 0, 2, GL_FLOAT, 2 * sizeof(GLfloat), (void*)0, 0);
@@ -187,12 +201,12 @@ int main() {
 	gen2DCircleArray(ball_vertices, ball_indices, num_triangles, 0.5f);
 
 	// More ball arrays
-	GLfloat ball_offsets[] = {
+	vec2 ball_offsets[] = {
 		SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f
 	};
 
-	GLfloat ball_sizes[] = {
-		10.0f, 10.0f
+	vec2 ball_sizes[] = {
+		ball_diameter, ball_diameter
 	};
 
 	// Generates ball Vertex Array Object and binds it
@@ -226,7 +240,7 @@ int main() {
 	// Main program loop
 	while (!glfwWindowShouldClose(window)) {
 		// Time elapsed since last frame
-		float current_frame = glfwGetTime();
+		float current_frame = (float)glfwGetTime();
 		delta_time = current_frame - last_frame;
 		last_frame = current_frame;
 
