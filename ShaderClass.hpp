@@ -2,7 +2,11 @@
 
 #include <glad/glad.h>
 #include <iostream>
-#include "definitions.hpp"
+
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <cerrno>
 
 // Return file's content as a string
 std::string getFileContent(const char* filename);

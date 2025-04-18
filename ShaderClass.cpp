@@ -1,5 +1,25 @@
 #include "ShaderClass.hpp"
 
+std::string getFileContent(const char* filename) {
+	std::ifstream file(filename, std::ios::binary);
+
+	if (file) {
+		std::string contents;
+
+		file.seekg(0, std::ios::end);
+		contents.resize(file.tellg());
+
+		file.seekg(0, std::ios::beg);
+		file.read(&contents[0], contents.size());
+
+		file.close();
+		return contents;
+	}
+
+	// If couldn't open file
+	throw(errno);
+};
+
 void Shader::createShader(const char* vertex_file, const char* fragment_file) {
 	std::string vertex_code = getFileContent(vertex_file);
 	std::string fragment_code = getFileContent(fragment_file);
