@@ -10,7 +10,6 @@
 #include "VBO.hpp"
 #include "VAO.hpp"
 #include "EBO.hpp"
-#include "definitions.hpp"
 
 GLuint SCREEN_WIDTH = 800;
 GLuint SCREEN_HEIGHT = 600;

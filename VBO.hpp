@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
-#include "definitions.hpp"
+#include <glm/glm.hpp>
 
 class VBO {
 	public:
