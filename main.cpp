@@ -18,10 +18,20 @@ Shader SHADER;
 
 const float PI = 4 * atanf(1.0f);
 
-const float paddle_height = 50.0f;
-const float paddle_speed = 150.0f;
 const float ball_diameter = 14.0f;
+const float ball_radius = ball_diameter / 2.0f;
+
+const float paddle_height = 80.0f;
+const float paddle_width = 12.0f;
+const float paddle_speed = 150.0f;
 const float paddle_boundary = (paddle_height / 2.0f) + (ball_diameter / 2.0f);
+
+glm::vec2 paddle_offsets[2];
+glm::vec2 ball_offset;
+
+glm::vec2 init_ball_velocity = { 150.0f, 150.0f };
+glm::vec2 ball_velocity = init_ball_velocity;
+GLfloat paddle_velocity[2];
 
 // Creates a circle using a 2D array for indices and precision (num_triangles AKA slices)
 void gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int num_triangles, float radius = 1.0f) {
@@ -80,34 +90,57 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 
 	// Set projection based on current windows size
 	setOrthographicProjection(SHADER, 0, width, 0, height, 0.0f, 1.0f);
+
+	// Update paddle position
+	paddle_offsets[1].x = width - 35.0f;
 };
 
-void processInput(GLFWwindow* window, vec2* paddle_offsets, float delta_time) {
+void processInput(GLFWwindow* window) {
 	// Closes the windows when escape is pressed
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+
+	paddle_velocity[0] = 0.0f;
+	paddle_velocity[1] = 0.0f;
+
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+		ball_velocity.x = 250;
+		ball_velocity.y = 250;
+	}
+
+	// Left paddle
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		if (paddle_offsets[0].y < SCREEN_HEIGHT - paddle_boundary) {
+			paddle_velocity[0] = paddle_speed;
+		}
+		else {
+			paddle_offsets[0].y = SCREEN_HEIGHT - paddle_boundary;
+		}
+	};
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		if (paddle_offsets[0].y > paddle_boundary) {
+			paddle_velocity[0] = -paddle_speed;
+		}
+		else {
+			paddle_offsets[0].y = paddle_boundary;
+		}
+	};
 
 	// Right paddle
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) { 
 		if (paddle_offsets[1].y < SCREEN_HEIGHT - paddle_boundary) {
-			paddle_offsets[1].y += paddle_speed * delta_time;
+			paddle_velocity[1] = paddle_speed;
+		}
+		else {
+			paddle_offsets[1].y = SCREEN_HEIGHT - paddle_boundary;
 		}
 	};
 
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
 		if (paddle_offsets[1].y > paddle_boundary) {
-			paddle_offsets[1].y -= paddle_speed * delta_time;
+			paddle_velocity[1] = -paddle_speed;
 		}
-	};
-
-	// Left paddle
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		if (paddle_offsets[0].y < SCREEN_HEIGHT - paddle_boundary) {
-			paddle_offsets[0].y += paddle_speed * delta_time;
-		}
-	};
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		if (paddle_offsets[0].y > paddle_boundary) {
-			paddle_offsets[0].y -= paddle_speed * delta_time;
+		else {
+			paddle_offsets[1].y = paddle_boundary;
 		}
 	};
 };
@@ -159,21 +192,17 @@ int main() {
 		2, 3 ,0
 	};
 
-	vec2 paddle_offsets[] = {
-		35.0f, SCREEN_HEIGHT / 2.0f,
-		SCREEN_WIDTH - 35.0f, SCREEN_HEIGHT / 2.0f
-	};
+	paddle_offsets[0] = { 35.0f, SCREEN_HEIGHT / 2.0f };
+	paddle_offsets[1] = { SCREEN_WIDTH - 35.0f, SCREEN_HEIGHT / 2.0f };
 
-	vec2 paddle_sizes[] = {
-		10.0f, paddle_height,
-	};
+	glm::vec2 paddle_sizes = { paddle_width, paddle_height };
 
 	VAO paddle_vao;
 	paddle_vao.Bind();
 
 	VBO paddle_position_vbo(paddle_vertices, sizeof(paddle_vertices), GL_STATIC_DRAW);
 	VBO paddle_offset_vbo(paddle_offsets, sizeof(paddle_offsets), GL_DYNAMIC_DRAW);
-	VBO paddle_size_vbo(paddle_sizes, sizeof(paddle_sizes), GL_STATIC_DRAW);
+	VBO paddle_size_vbo(&paddle_sizes, sizeof(paddle_sizes), GL_STATIC_DRAW);
 
 	EBO paddle_ebo(paddle_indices, sizeof(paddle_indices));
 	paddle_ebo.Bind();
@@ -197,17 +226,13 @@ int main() {
 	GLuint* ball_indices;
 	unsigned int num_triangles = 15; // Precision
 
-	// Assign values for the ball's arrays
+	// Assign values for the ball's info
 	gen2DCircleArray(ball_vertices, ball_indices, num_triangles, 0.5f);
 
-	// More ball arrays
-	vec2 ball_offsets[] = {
-		SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f
-	};
+	// More ball informations
+	ball_offset = { SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f };
 
-	vec2 ball_sizes[] = {
-		ball_diameter, ball_diameter
-	};
+	glm::vec2 ball_size = { ball_diameter, ball_diameter };
 
 	// Generates ball Vertex Array Object and binds it
 	VAO ball_vao;
@@ -215,8 +240,8 @@ int main() {
 
 	// Generates ball Vertex Buffer Objects and binds them
 	VBO ball_position_vbo(ball_vertices, 2 * (num_triangles + 1) * sizeof(GLfloat), GL_STATIC_DRAW);
-	VBO ball_offset_vbo(ball_offsets, sizeof(ball_offsets), GL_DYNAMIC_DRAW);
-	VBO ball_size_vbo(ball_sizes, sizeof(ball_sizes), GL_DYNAMIC_DRAW);
+	VBO ball_offset_vbo(&ball_offset, sizeof(ball_offset), GL_DYNAMIC_DRAW);
+	VBO ball_size_vbo(&ball_size, sizeof(ball_size), GL_DYNAMIC_DRAW);
 
 	// Generates Element Buffer Object and binds it
 	EBO ball_ebo(ball_indices, 3 * num_triangles * sizeof(GLfloat));
@@ -235,16 +260,105 @@ int main() {
 	ball_ebo.Unbind();
 
 	// Time elapse, used to stabilyze movement across different framerates
-	float delta_time = 0.0f, last_frame = 0.0f;
+	float dt = 0.0f, last_frame = 0.0f;
+
+	// Collision frames
+	const int collision_threshold = 3;
+	int collision_cooldown = 0;
 
 	// Main program loop
 	while (!glfwWindowShouldClose(window)) {
 		// Time elapsed since last frame
 		float current_frame = (float)glfwGetTime();
-		delta_time = current_frame - last_frame;
+		dt = current_frame - last_frame;
 		last_frame = current_frame;
 
-		processInput(window, paddle_offsets, delta_time);
+		bool reset = false;
+
+		processInput(window);
+
+		// *******************
+		// **	COLLISIONS	**
+		// *******************
+
+		// Collision with top or bottom wall
+		if (ball_offset.y - ball_radius <= 0 || ball_offset.y + ball_radius >= SCREEN_HEIGHT) {
+			ball_velocity.y *= -1;
+		}
+
+		// Collision with left wall 
+		if (ball_offset.x - ball_radius <= 0) {
+			reset = true;
+		}
+
+		// Collision with right wall 
+		if (ball_offset.x + ball_radius >= SCREEN_WIDTH) {
+			reset = true;
+		}
+
+		// Centers ball and reset velocity
+		if (reset) {
+			ball_offset.x = SCREEN_WIDTH / 2.0f;
+			ball_offset.y = SCREEN_HEIGHT / 2.0f;
+			ball_velocity = init_ball_velocity;
+		}
+
+		// Paddle collision
+		if (collision_cooldown > 0) {
+			collision_cooldown--;
+		}
+
+		if (collision_cooldown == 0) {
+			//Checks for left (0) and right (1) paddle
+			for (int lr = 0; lr < 2; lr++) {
+				// Calculate distance vector
+				glm::vec2 distance = {
+					std::abs(ball_offset.x - paddle_offsets[lr].x) - (paddle_width / 2 + ball_radius),
+					std::abs(ball_offset.y - paddle_offsets[lr].y) - (paddle_height / 2 + ball_radius)
+				};
+
+				// If both distances are negative the ball has a collision
+				if (distance.x < 0 && distance.y < 0) {
+					// Determine which side was hit
+					if (distance.x > distance.y) {
+						// Horizontal collision (left/right of paddle)
+						ball_velocity.x *= -1;
+
+						// Push ball out to prevent sticking
+						float push = (distance.x + 0.1f) * (ball_offset.x < paddle_offsets[lr].x ? -1 : 1);
+						ball_offset.x += push;
+					}
+					else {
+						// Vertical collision (top/bottom of paddle)
+						ball_velocity.y *= -1;
+					
+						// Push ball out to prevent sticking
+						float push = (distance.y + 0.1f) * (ball_offset.y < paddle_offsets[lr].y ? -1 : 1);
+						ball_offset.y += push;
+					}
+
+					// Speed up ball
+					ball_velocity.x *= 1.1f;
+					ball_velocity.y += 0.5f * paddle_velocity[lr];
+
+					// Activate cooldown
+					collision_cooldown = collision_threshold;
+					break; //If collided with left paddle, ignore chech for right paddle
+				}
+			}
+		}
+
+		// Updates paddles positions
+		paddle_offsets[0].y += paddle_velocity[0] * dt;
+		paddle_offsets[1].y += paddle_velocity[1] * dt;
+
+		// Updates ball position
+		ball_offset.x += ball_velocity.x * dt;
+		ball_offset.y += ball_velocity.y * dt;
+
+		// *******************
+		// **	GRAPHICS	**
+		// *******************
 
 		// Clear screen and set background to black
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -253,13 +367,12 @@ int main() {
 		// Activates render/shader object
 		SHADER.Activate();
 
-		// Updates ball
+		// Updates data in GPU
 		ball_offset_vbo.Bind();
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ball_offsets), ball_offsets);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(ball_offset), &ball_offset);
 		
 		paddle_offset_vbo.Bind();
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(paddle_offsets), paddle_offsets);
-
 
 		// Draw the ball on screen
 		ball_vao.Bind();
