@@ -28,9 +28,22 @@ const float paddle_boundary = (paddle_height / 2.0f) + (ball_diameter / 2.0f);
 glm::vec2 paddle_offsets[2];
 glm::vec2 ball_offset;
 
-glm::vec2 init_ball_velocity = { 150.0f, 150.0f };
-glm::vec2 ball_velocity = init_ball_velocity;
+const float ball_min_velocity = 20.0f;
+const float ball_max_velocity = 300.0f;
+
 GLfloat paddle_velocity[2];
+
+// Random number generator
+int randomNumber(int min, int max, bool negative = false) {
+	if (!negative && (min < 0 || max < 0)) {
+		throw std::invalid_argument("CAN'T GENERATE NEGATIVE NUMBER IF NEGATIVES ARE NOT ALLOWED!");
+	}
+
+	if (negative) { 
+		return (rand() % 1) ? -(rand() % (max - min) + min) : (rand() % (max - min) + min);
+	}
+	return (rand() % (max - min) + min);
+}
 
 // Creates a circle using a 2D array for indices and precision (num_triangles AKA slices)
 void gen2DCircleArray(float*& vertices, unsigned int*& indices, unsigned int num_triangles, float radius = 1.0f) {
@@ -101,11 +114,6 @@ void processInput(GLFWwindow* window) {
 	paddle_velocity[0] = 0.0f;
 	paddle_velocity[1] = 0.0f;
 
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-		ball_velocity.x = 250;
-		ball_velocity.y = 250;
-	}
-
 	// Left paddle
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
 		if (paddle_offsets[0].y < SCREEN_HEIGHT - paddle_boundary) {
@@ -145,7 +153,7 @@ void processInput(GLFWwindow* window) {
 };
 
 int main() {
-	// Initialize OpenGL version 4.6 
+		// Initialize OpenGL version 4.6 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -221,6 +229,9 @@ int main() {
 	// ***************
 
 	// Ball variables
+	srand(time(0));
+	glm::vec2 ball_velocity = { randomNumber(50, 150, true), randomNumber(0, 150, true) };
+	
 	GLfloat* ball_vertices;
 	GLuint* ball_indices;
 	unsigned int num_triangles = 15; // Precision
@@ -265,6 +276,9 @@ int main() {
 	const int collision_threshold = 3;
 	int collision_cooldown = 0;
 
+	// Which side scored, left (0) or right (1);
+	bool winner = 0;
+
 	// Main program loop
 	while (!glfwWindowShouldClose(window)) {
 		// Time elapsed since last frame
@@ -283,23 +297,34 @@ int main() {
 		// Collision with top or bottom wall
 		if (ball_offset.y - ball_radius <= 0 || ball_offset.y + ball_radius >= SCREEN_HEIGHT) {
 			ball_velocity.y *= -1;
+
+			float push = 0.1f * (ball_offset.y > SCREEN_HEIGHT / 2 ? -1 : 1);
+			ball_offset.y += push;
 		}
 
 		// Collision with left wall 
 		if (ball_offset.x - ball_radius <= 0) {
+			winner = 0;
 			reset = true;
 		}
 
 		// Collision with right wall 
 		if (ball_offset.x + ball_radius >= SCREEN_WIDTH) {
+			winner = 1;
 			reset = true;
 		}
 
 		// Centers ball and reset velocity
 		if (reset) {
+			if (winner) {
+				ball_velocity = { -randomNumber(50, 150), randomNumber(0, 150, true) };
+			}
+			else {
+				ball_velocity = { randomNumber(50, 150), randomNumber(0, 150, true) };
+			}
+
 			ball_offset.x = SCREEN_WIDTH / 2.0f;
 			ball_offset.y = SCREEN_HEIGHT / 2.0f;
-			ball_velocity = init_ball_velocity;
 		}
 
 		// Paddle collision
@@ -337,8 +362,25 @@ int main() {
 					}
 
 					// Speed up ball
-					ball_velocity.x *= 1.1f;
+					ball_velocity.x *= 1.05f;
 					ball_velocity.y += 0.5f * paddle_velocity[lr];
+
+					// Checks for ball minimum and maximum velocities
+					if (std::abs(ball_velocity.y) < ball_min_velocity) {
+						ball_velocity.y = (ball_velocity.y > 0) ? ball_min_velocity : -ball_min_velocity;
+					}
+
+					if (std::abs(ball_velocity.y) > ball_max_velocity) {
+						ball_velocity.y = (ball_velocity.y > 0) ? ball_max_velocity : -ball_max_velocity;
+					}
+
+					if (std::abs(ball_velocity.x) < ball_min_velocity) {
+						ball_velocity.x = (ball_velocity.x > 0) ? ball_min_velocity : -ball_min_velocity;
+					}
+
+					if (std::abs(ball_velocity.x) > ball_max_velocity) {
+						ball_velocity.x = (ball_velocity.x > 0) ? ball_max_velocity : -ball_max_velocity;
+					}
 
 					// Activate cooldown
 					collision_cooldown = collision_threshold;
